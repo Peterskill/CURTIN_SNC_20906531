@@ -1,8 +1,6 @@
 #include <SNC.h>
 
-void main(int argc,char **argv){
-    int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	int			listenfd, connfd;
 	pid_t			childpid;
@@ -39,5 +37,4 @@ main(int argc, char **argv)
 		}
 		Close(connfd);			/* parent closes connected socket */
 	}
-}
 }
