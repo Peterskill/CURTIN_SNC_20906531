@@ -13,5 +13,3 @@
 #define MAX_CLIENT 10
 #define MAX_IDLE_WAIT 300
 #define SERV_TCP_PORT 52002
-
- 
