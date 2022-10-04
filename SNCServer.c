@@ -164,8 +164,12 @@ int main(int argc, char **argv){
 		return EXIT_FAILURE;
 	}
 
+	if(argc[0] == "JOIN"){
+		
+	}
+
 	char *ip = "127.0.0.1";
-	int port = atoi(argv[1]);
+	int port = 4444;
 	int option = 1;
 	int listenfd = 0, connfd = 0;
   struct sockaddr_in serv_addr;
@@ -198,7 +202,7 @@ int main(int argc, char **argv){
     return EXIT_FAILURE;
 	}
 
-	printf("=== WELCOME TO THE CHATROOM ===\n");
+	printf("=== WELCOME TO THE SNC SYSTEM SERVER ===\n");
 
 	while(1){
 		socklen_t clilen = sizeof(cli_addr);

@@ -8,13 +8,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <ctype.h>
+
 
 #define LENGTH 2048
 
 // Global variables
 volatile sig_atomic_t flag = 0;
 int sockfd = 0;
-char name[32];
+char name[32]="";
+char commad;
 
 void str_overwrite_stdout() {
   printf("%s", "> ");
@@ -78,22 +81,27 @@ int main(int argc, char **argv){
 		printf("Usage: %s <port>\n", argv[0]);
 		return EXIT_FAILURE;
 	}
+	if(argc[1] == "JOIN"){
+		str_trim_lf(name,strlen(name));
+	}
 
 	char *ip = "127.0.0.1";
-	int port = atoi(argv[1]);
+	int port = 4444;
 
 	signal(SIGINT, catch_ctrl_c_and_exit);
+	if (name !=""){
+		printf("Please Enter the name:")
+	fgets(commad,stdin);
+	str_trim_lf(name, strlen(name));
+	}
 
-	printf("Please enter your name: ");
-  fgets(name, 32, stdin);
-  str_trim_lf(name, strlen(name));
-
-
+  if(strstr)
 	if (strlen(name) > 32 || strlen(name) < 2){
 		printf("Name must be less than 30 and more than 2 characters.\n");
 		return EXIT_FAILURE;
 	}
-
+	
+	fgets(commad,stdin);
 	struct sockaddr_in server_addr;
 
 	/* Socket settings */
