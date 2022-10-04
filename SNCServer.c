@@ -164,9 +164,7 @@ int main(int argc, char **argv){
 		return EXIT_FAILURE;
 	}
 
-	if(argc[0] == "JOIN"){
-		
-	}
+	
 
 	char *ip = "127.0.0.1";
 	int port = 4444;
