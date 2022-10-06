@@ -7,19 +7,28 @@
 
 
 #define	MAXLINE	4096
+#define MAX_CLIENTS 100
 
 static void	*doit(void *arg);/* each thread executes this function */
 
 
 static int cli_count = 0;
-static int uid = 10;
+static int uid = 0;
 static char w_message[MAXLINE];
 
 //declaring the server arguments globally
 
- static int max_clients=100; //Maximum number of SNCclients
 
-typedef struct{}cli_info
+/* Client structure */
+typedef struct{
+	struct sockaddr_in address;
+	int sockfd;
+	int uid;
+	char nickname[32];
+	char realname[100];
+} client_info;
+
+client_info *clients[MAX_CLIENTS];
 
 int main(int argc, char **argv)
 {
@@ -59,7 +68,7 @@ int main(int argc, char **argv)
 		char maxCli_warn[] = "\nSorry! Maximum client count reached. Try next time\n";
 
 		//handling the number of clients
-		if((cli_count ) == max_clients){
+		if((cli_count ) == MAX_CLIENTS){
 		printf("Maximum clients connected. Client %d Rejected \n",cli_count+1);
 		send(iptr,&maxCli_warn,strlen(maxCli_warn),0);
 		close(iptr);
@@ -85,28 +94,32 @@ doit(void *arg)
 	char arg1[20],arg2[10],arg3[10];
 	
 	//The welcome message displayed at the start of the game to the client
-	char wMessage[] = "\n====================Welcome to the Simple Network Chat ==================== \n";
+	char wMessage[] = "\n====================Welcome to Simple Network Chat ==================== \n";
 	
 	//Send the welcome message to client
 	send(connfd,&wMessage,strlen(wMessage),0);
 	
 	
 
-	//Receiving	
-	bzero(&buffer,sizeof(buffer));
-	len=recv(connfd,&buffer,sizeof(buffer),0);
-	strcpy(str,buffer);
+	while(1){
 
-	sscanf(str,"%s %s %s",arg1,arg2,arg3);
+		//Receiving	
+  		bzero(&buffer,sizeof(buffer));
+		len=recv(connfd,&buffer,sizeof(buffer),0);
+		strcpy(str,buffer);
 
-	if(strcasecmp(toupper(arg1),"JOIN")==0){
-		send(connfd,&arg2,strlen(arg2),0);
+		sscanf(str,"%s %s %s",arg1,arg2,arg3);
 
-	}    
+		if(strcasecmp(toupper(arg1),"JOIN")==0){
+			char nclient[]=" ,Welcome to Simple Network Chat";
+			strcat(arg2,&nclient,strlen(nclient));
+			send(connfd,&buffer);
+		}    
 				
 
 			
-	Close(connfd);			/* we are done with connected socket */
+		Close(connfd);	
+	}		/* we are done with connected socket */
 	
 	return(NULL);
 }
