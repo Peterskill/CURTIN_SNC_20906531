@@ -1,233 +1,113 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include	"acc.h"
+#include	"signal.h"
+#include	"pthread.h"
+#include 	"string.h"
+#include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <strings.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <signal.h>
 
-#define MAX_CLIENTS 100
-#define BUFFER_SZ 2048
+
+#define	MAXLINE	4096
+
+static void	*doit(void *arg);/* each thread executes this function */
+
 
 static int cli_count = 0;
 static int uid = 10;
+static char w_message[MAXLINE];
 
-/* Client structure */
-typedef struct{
-	struct sockaddr_in address;
-	int sockfd;
-	int uid;
-	char name[32];
-} client_t;
+//declaring the server arguments globally
 
-client_t *clients[MAX_CLIENTS];
+ static int max_clients=100; //Maximum number of SNCclients
 
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+typedef struct{}cli_info
 
-void str_overwrite_stdout() {
-    printf("\r%s", "> ");
-    fflush(stdout);
-}
+int main(int argc, char **argv)
+{
+	int			listenfd, connfd ,iptr;
+	pthread_t		tid;
+	socklen_t		clilen, addrlen, len;
+	struct sockaddr_in	 servaddr;
+	struct sockaddr	*cliaddr;
+	char		buff[MAXLINE];
+	
+	
+	void			sig_chld(int);
 
-void str_trim_lf (char* arr, int length) {
-  int i;
-  for (i = 0; i < length; i++) { // trim \n
-    if (arr[i] == '\n') {
-      arr[i] = '\0';
-      break;
-    }
-  }
-}
+	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
 
-void print_client_addr(struct sockaddr_in addr){
-    printf("%d.%d.%d.%d",
-        addr.sin_addr.s_addr & 0xff,
-        (addr.sin_addr.s_addr & 0xff00) >> 8,
-        (addr.sin_addr.s_addr & 0xff0000) >> 16,
-        (addr.sin_addr.s_addr & 0xff000000) >> 24);
-}
+//--------------------------------------------------------------------------------------------------------------------------------------------
 
-/* Add clients to queue */
-void queue_add(client_t *cl){
-	pthread_mutex_lock(&clients_mutex);
 
-	for(int i=0; i < MAX_CLIENTS; ++i){
-		if(!clients[i]){
-			clients[i] = cl;
-			break;
-		}
-	}
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port        = htons(SERV_TCP_PORT);
 
-	pthread_mutex_unlock(&clients_mutex);
-}
+	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
 
-/* Remove clients to queue */
-void queue_remove(int uid){
-	pthread_mutex_lock(&clients_mutex);
+	Listen(listenfd, LISTENQ);
 
-	for(int i=0; i < MAX_CLIENTS; ++i){
-		if(clients[i]){
-			if(clients[i]->uid == uid){
-				clients[i] = NULL;
-				break;
-			}
-		}
-	}
+	while(1)
+	 {
+		len = sizeof (cliaddr);
+		iptr = (int *) Malloc(sizeof(int));
+		iptr = Accept(listenfd, (SA *) &cliaddr, &len);
 
-	pthread_mutex_unlock(&clients_mutex);
-}
+		char buffer[512];
 
-/* Send message to all clients except sender */
-void send_message(char *s, int uid){
-	pthread_mutex_lock(&clients_mutex);
+		//The sending maximum clients reached warning to the clients
+		char maxCli_warn[] = "\nSorry! Maximum client count reached. Try next time\n";
 
-	for(int i=0; i<MAX_CLIENTS; ++i){
-		if(clients[i]){
-			if(clients[i]->uid != uid){
-				if(write(clients[i]->sockfd, s, strlen(s)) < 0){
-					perror("ERROR: write to descriptor failed");
-					break;
-				}
-			}
-		}
-	}
-
-	pthread_mutex_unlock(&clients_mutex);
-}
-
-/* Handle all communication with the client */
-void *handle_client(void *arg){
-	char buff_out[BUFFER_SZ];
-	char name[32];
-	int leave_flag = 0;
-
-	cli_count++;
-	client_t *cli = (client_t *)arg;
-
-	// Name
-	if(recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1){
-		printf("Didn't enter the name.\n");
-		leave_flag = 1;
-	} else{
-		strcpy(cli->name, name);
-		sprintf(buff_out, "%s has joined\n", cli->name);
-		printf("%s", buff_out);
-		send_message(buff_out, cli->uid);
-	}
-
-	bzero(buff_out, BUFFER_SZ);
-
-	while(1){
-		if (leave_flag) {
-			break;
+		//handling the number of clients
+		if((cli_count ) == max_clients){
+		printf("Maximum clients connected. Client %d Rejected \n",cli_count+1);
+		send(iptr,&maxCli_warn,strlen(maxCli_warn),0);
+		close(iptr);
+		continue;
 		}
 
-		int receive = recv(cli->sockfd, buff_out, BUFFER_SZ, 0);
-		if (receive > 0){
-			if(strlen(buff_out) > 0){
-				send_message(buff_out, cli->uid);
-
-				str_trim_lf(buff_out, strlen(buff_out));
-				printf("%s -> %s\n", buff_out, cli->name);
-			}
-		} else if (receive == 0 || strcmp(buff_out, "exit") == 0){
-			sprintf(buff_out, "%s has left\n", cli->name);
-			printf("%s", buff_out);
-			send_message(buff_out, cli->uid);
-			leave_flag = 1;
-		} else {
-			printf("ERROR: -1\n");
-			leave_flag = 1;
-		}
-
-		bzero(buff_out, BUFFER_SZ);
+		Pthread_create(&tid, NULL, &doit, iptr);
+		
+		cli_count++;
 	}
-
-  /* Delete client from queue and yield thread */
-	close(cli->sockfd);
-  queue_remove(cli->uid);
-  free(cli);
-  cli_count--;
-  pthread_detach(pthread_self());
-
-	return NULL;
+	
+	
 }
 
-int main(int argc, char **argv){
-	if(argc != 2){
-		printf("Usage: %s <port>\n", argv[0]);
-		return EXIT_FAILURE;
-	}
+static void *
+doit(void *arg)
+{
 
+	int	connfd,len,j=0;
+	connfd = connfd = (int *) arg;
+	char buffer[4096];
+	char str[100];
+	char arg1[20],arg2[10],arg3[10];
+	
+	//The welcome message displayed at the start of the game to the client
+	char wMessage[] = "\n====================Welcome to the Simple Network Chat ==================== \n";
+	
+	//Send the welcome message to client
+	send(connfd,&wMessage,strlen(wMessage),0);
+	
 	
 
-	char *ip = "127.0.0.1";
-	int port = 4444;
-	int option = 1;
-	int listenfd = 0, connfd = 0;
-  struct sockaddr_in serv_addr;
-  struct sockaddr_in cli_addr;
-  pthread_t tid;
+	//Receiving	
+	bzero(&buffer,sizeof(buffer));
+	len=recv(connfd,&buffer,sizeof(buffer),0);
+	strcpy(str,buffer);
 
-  /* Socket settings */
-  listenfd = socket(AF_INET, SOCK_STREAM, 0);
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = inet_addr(ip);
-  serv_addr.sin_port = htons(port);
+	sscanf(str,"%s %s %s",arg1,arg2,arg3);
 
-  /* Ignore pipe signals */
-	signal(SIGPIPE, SIG_IGN);
+	if(strcasecmp(toupper(arg1),"JOIN")==0){
+		send(connfd,&arg2,strlen(arg2),0);
 
-	if(setsockopt(listenfd, SOL_SOCKET,(SO_REUSEPORT | SO_REUSEADDR),(char*)&option,sizeof(option)) < 0){
-		perror("ERROR: setsockopt failed");
-    return EXIT_FAILURE;
-	}
+	}    
+				
 
-	/* Bind */
-  if(bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-    perror("ERROR: Socket binding failed");
-    return EXIT_FAILURE;
-  }
-
-  /* Listen */
-  if (listen(listenfd, 10) < 0) {
-    perror("ERROR: Socket listening failed");
-    return EXIT_FAILURE;
-	}
-
-	printf("=== WELCOME TO THE SNC SYSTEM SERVER ===\n");
-
-	while(1){
-		socklen_t clilen = sizeof(cli_addr);
-		connfd = accept(listenfd, (struct sockaddr*)&cli_addr, &clilen);
-
-		/* Check if max clients is reached */
-		if((cli_count + 1) == MAX_CLIENTS){
-			printf("Max clients reached. Rejected: ");
-			print_client_addr(cli_addr);
-			printf(":%d\n", cli_addr.sin_port);
-			close(connfd);
-			continue;
-		}
-
-		/* Client settings */
-		client_t *cli = (client_t *)malloc(sizeof(client_t));
-		cli->address = cli_addr;
-		cli->sockfd = connfd;
-		cli->uid = uid++;
-
-		/* Add client to the queue and fork thread */
-		queue_add(cli);
-		pthread_create(&tid, NULL, &handle_client, (void*)cli);
-
-		/* Reduce CPU usage */
-		sleep(1);
-	}
-
-	return EXIT_SUCCESS;
+			
+	Close(connfd);			/* we are done with connected socket */
+	
+	return(NULL);
 }
+
