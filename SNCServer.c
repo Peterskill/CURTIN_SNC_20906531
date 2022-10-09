@@ -112,7 +112,8 @@ void queue_remove(int uid){
 int main(int argc, char **argv)
 {
 	MAX_CLIENTS=atoi(argv[1]);
-	timeout.tv_sec=atoi(argv[2]);
+	max_idle_time=atoi(argv[2]);
+	timeout.tv_sec=max_idle_time;
 //--------------Server side list setup for request--------------------------------------------------------------------------------------------
 	int			listenfd, iptr;
 	pthread_t		tid;
@@ -242,14 +243,14 @@ void doit(void *arg)
 					sprintf(buffer,"%s ,Welcome to Simple Network Chat",cli->nickname);
 //====================================================================informing others that he has joined the chat and the server
 					bzero(&buff_out,MAXLINE);
-					sprintf(buff_out,"%s has joined SNC",cli->nickname);
+					sprintf(buff_out,"Server: %s has joined SNC",cli->nickname);
 					printf("%s\n",buff_out);
 					broadcaster(buff_out,cli->uid);
 					bzero(buff_out,MAXLINE);
 					}
 				send(cli->sockfd,&buffer,sizeof(buffer),0);
 			}else{
-				sprintf(buffer,"nickname or real name is less than or greater than 20 please check  try again");
+				sprintf(buffer,"Sever: nickname or real name is less than or greater than 20 please check  try again");
 				send(cli->sockfd,&buffer,sizeof(buffer),0);
 				leave_flag=1;
 			}
@@ -265,7 +266,7 @@ void doit(void *arg)
 				{
 					if (strcasecmp(clients[i]->nickname,arg2)==0)
 					{
-						sprintf(buffer,"uid : %d,nickname : %s, name : %s",clients[i]->uid,clients[i]->nickname,clients[i]->name);
+						sprintf(buffer,"Server: uid : %d,nickname : %s, name : %s",clients[i]->uid,clients[i]->nickname,clients[i]->name);
 						send(cli->sockfd,&buffer,sizeof(buffer),0);
 					}
 				}
@@ -285,7 +286,7 @@ void doit(void *arg)
 //====================client exit
 		}else if(strcasecmp(arg1,"QUIT")==0){
 			sprintf(buff_out,"%s has stopped chatting",cli->nickname);
-			sprintf(buffer,"bye %s",cli->nickname);
+			sprintf(buffer,"Server : BYE %s",cli->nickname);
 			send(cli->sockfd,&buffer,sizeof(buffer),0);
 			broadcaster(buff_out,cli->uid);
 			printf("%s\n",buff_out);
@@ -296,10 +297,14 @@ void doit(void *arg)
 		}else if(strcasecmp(arg1,"ALIVE") == 0){
 				sprintf(buffer,"OK, %s!",cli->name);
 				send(cli->sockfd,&buffer,sizeof(buffer),0);
-			}
+		}else{
+			sprintf(buffer,"Wrong Command");
+			send(cli->sockfd,&buffer,sizeof(buffer),0);
+
+		}
 //========================timeout	
 	}else if(len==0){
-		sprintf(buff_out,"%s has stopped chatting",cli->nickname);
+		sprintf(buff_out,"Server : %s has stopped chatting",cli->nickname);
 		broadcaster(buff_out,cli->uid);
 		printf("%s\n",buff_out);
 		bzero(buff_out,MAXLINE);
@@ -313,8 +318,7 @@ void doit(void *arg)
 		bzero(buff_out,MAXLINE);
 		leave_flag=1;
 	}	
-			
-		
+	}	
 /* ======================Delete client from queue and yield thread =============================================================*/
 	close(cli->sockfd);
   	queue_remove(cli->uid);
@@ -322,6 +326,6 @@ void doit(void *arg)
   	cli_count--;
   	pthread_detach(pthread_self());
 	return(NULL);
-}
+
 }
 

@@ -84,8 +84,8 @@ main(int argc, char **argv)
 	char buffer[4096];
 	char file[4096];
 
-	if (argc != 3)
-		err_quit("usage: tcpcli <IPaddress> <port number>");
+	if (argc != 2)
+		err_quit("usage: tcpcli <IPaddress>");
 
 	sockfd = Socket(AF_INET, SOCK_STREAM, 0);
 
