@@ -26,13 +26,16 @@
 #define	SERV_TCP_PORT	52001
 #define	OK	52001
 #define	SA	struct sockaddr
+
 /* Our own header for the programs that use threads.
    Include this file, instead of "unp.h". */
+
 
 
 #ifndef		__unp_pthread_h
 #define		__unp_pthread_h
 
+/* Client structure */
 
 
 void	Pthread_create(pthread_t *, const pthread_attr_t *, void * (*)(void *), void *);

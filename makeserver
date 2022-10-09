@@ -1,5 +1,5 @@
-SNCServer.out: error.o wrapunix.o wrapsock.o wraplib.o wrapstdio.o SNCServer.o    wrappthread.o 
-	cc -o SNCServer.out wrappthread.o  error.o wrapunix.o wrapsock.o wraplib.o wrapstdio.o SNCServer.o   -lpthread
+SNCServer.out: error.o wrapunix.o wrapsock.o wraplib.o wrapstdio.o SNCServer.o str_echo.o wrappthread.o 
+	cc -o SNCServer.out wrappthread.o error.o wrapunix.o wrapsock.o wraplib.o wrapstdio.o SNCServer.o   -lpthread
 
 error.o: error.c acc.h
 	cc -c error.c
